@@ -13,3 +13,11 @@ GLOBAL_DIR: C:/Users/PC/.gemini/config/skills
 | orimise-deep-planning | Own | global | ~/.gemini/config/skills/orimise-deep-planning | local repo | 2026-10-08 | Ủy quyền model sâu qua Orimise |
 | playwright | Own | global | ~/.gemini/config/skills/playwright | local repo | 2026-10-08 | Kiểm thử trình duyệt |
 | skill-manager | Own | global | ~/.gemini/config/skills/skill-manager | local repo | 2026-10-08 | Quản lý vòng đời skills |
+| docx | External | global | ~/.gemini/config/skills/docx | anthropics/skills (683bc88) | 2026-10-08 | Báo cáo, tài liệu Word |
+| pptx | External | global | ~/.gemini/config/skills/pptx | anthropics/skills (683bc88) | 2026-10-08 | Trình chiếu, slides |
+| pdf | External | global | ~/.gemini/config/skills/pdf | anthropics/skills (683bc88) | 2026-10-08 | Trích xuất, đọc PDF |
+| xlsx | External | global | ~/.gemini/config/skills/xlsx | anthropics/skills (683bc88) | 2026-10-08 | Bảng tính Excel, charts |
+| skill-creator | External | global | ~/.gemini/config/skills/skill-creator | anthropics/skills (683bc88) | 2026-10-08 | Tạo & eval skills mới |
+| superpowers | External | project | _external/superpowers | obra/superpowers (8ca22db) | 2026-10-08 | 15 workflow skills (TDD, review...) |
+| frontend-design | External | project | _external/frontend-design | anthropics/skills (683bc88) | 2026-10-08 | Tokens & design system cho web/UI |
+| agent-skills | External | project | _external/agent-skills | addyosmani/agent-skills (1401c8b) | 2026-10-08 | 25 development skills |
