@@ -1,0 +1,22 @@
+# Scratch & Temporary execution files
+scratch/
+*.partial
+*.session.json
+*.INCOMPLETE
+orimise_ledger.json
+
+# Logs
+*.log
+
+# Secrets & Credentials
+*api_key*
+*.key
+*.pem
+.env*
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
