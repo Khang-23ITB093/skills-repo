@@ -1,9 +1,17 @@
+# External third-party skills (never commit, manage via skills.lock.md)
+_external/
+
 # Scratch & Temporary execution files
 scratch/
 *.partial
 *.session.json
 *.INCOMPLETE
 orimise_ledger.json
+
+# Cache & Build
+__pycache__/
+*.py[cod]
+node_modules/
 
 # Logs
 *.log

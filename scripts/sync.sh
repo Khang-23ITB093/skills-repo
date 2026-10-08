@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Script đồng bộ Skills và Rules vào Antigravity / Gemini CLI trên Linux / macOS
+set -e
+
+TARGET="${1:-global}"
+PROJECT_PATH="$2"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+
+if [ "$TARGET" = "global" ]; then
+    DEST_ROOT="$HOME/.gemini/config"
+    DEST_SKILLS="$DEST_ROOT/skills"
+    DEST_RULES="$DEST_ROOT/rules"
+    echo ">>> Đang đồng bộ vào cấu hình Global: $DEST_ROOT"
+else
+    if [ -z "$PROJECT_PATH" ]; then
+        echo "Lỗi: Vui lòng truyền đường dẫn dự án: ./sync.sh project /path/to/project"
+        exit 1
+    fi
+    DEST_ROOT="$PROJECT_PATH/.agents"
+    DEST_SKILLS="$DEST_ROOT/skills"
+    DEST_RULES="$DEST_ROOT/rules"
+    echo ">>> Đang đồng bộ vào Project: $DEST_ROOT"
+fi
+
+mkdir -p "$DEST_SKILLS"
+mkdir -p "$DEST_RULES"
+
+echo "--> Đồng bộ các skills nội bộ..."
+rsync -av --exclude=".*" --exclude="*.key" --exclude="*.pem" "$REPO_ROOT/skills/" "$DEST_SKILLS/"
+
+if [ -d "$REPO_ROOT/_external" ]; then
+    echo "--> Đồng bộ các skills external..."
+    rsync -av --exclude=".*" "$REPO_ROOT/_external/" "$DEST_SKILLS/"
+fi
+
+echo "--> Đồng bộ các rules..."
+rsync -av --exclude=".*" --exclude="*.key" --exclude="*.pem" "$REPO_ROOT/rules/" "$DEST_RULES/"
+
+echo ">>> Hoàn tất đồng bộ thành công!"
