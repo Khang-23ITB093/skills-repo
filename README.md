@@ -41,7 +41,21 @@ skills-repo/
 │   ├── orimise-model-routing.md
 │   ├── plan-approval-first.md
 │   └── project-initialization.md
-├── _external/                       # Thư viện third-party skills (gitignored)
+├── _external/                       # Thư viện 412 external skills (12 phân loại chức năng)
+│   ├── 01-documents/                # Văn phòng (Word, Excel, PowerPoint, PDF)
+│   ├── 02-video-multimedia/         # Video summary (BibiGPT, YouTube), Remotion, Manim
+│   ├── 03-frontend-ui/              # Thiết kế UI, tokens, themes, web artifacts
+│   ├── 04-engineering-workflow/     # TDD, review, superpowers, mattpocock, debugging
+│   ├── 05-security-compliance/      # Rà soát bảo mật, audit smart contracts, HIPAA/PHI
+│   ├── 06-devops-cloud/             # Docker, K8s, mạng homelab/BGP/VPN, canary
+│   ├── 07-agentic-systems/          # Harness AI, autonomous loops, Claude API, MCP
+│   ├── 08-languages-frameworks/     # React, Next.js, Vue, Python, Rust, SpringBoot
+│   ├── 09-research-analytics/       # Deep research, Exa, OSINT, tài liệu học thuật
+│   ├── 10-productivity-meta/        # Tạo skill, /grill-me, /handoff, ops, GitHub
+│   ├── 11-business-marketing/       # SEO, viết bài, pitch deck, market intelligence
+│   ├── 12-specialized-domains/      # Machine Learning, Logistics/Supply chain, Compute
+│   ├── README.md                    # Hướng dẫn chọn & kích hoạt external skill
+│   └── CATALOG.md                   # Bảng tra cứu chi tiết toàn bộ 412 skills
 └── scratch/                         # Vùng chạy thử tạm thời (gitignored)
 ```
 
@@ -99,6 +113,20 @@ Nếu chỉ muốn áp dụng bộ skills/rules cho một repo dự án xác đ�
 .\scripts\sync.ps1 -Target project -ProjectPath "D:\Path\To\YourProject"
 ```
 *Tệp sẽ được đồng bộ vào thư mục `YourProject/.agents/skills/` và `YourProject/.agents/rules/`.*
+
+---
+
+### Cách 3: Kích hoạt Kỹ năng Chuyên biệt từ Thư viện `_external/`
+Tra cứu danh mục tại [`_external/CATALOG.md`](_external/CATALOG.md) và kích hoạt chính xác kỹ năng cần thiết:
+
+```powershell
+# Kích hoạt 1 skill cụ thể (ví dụ: bibi tóm tắt video) vào Global hoặc Project
+.\scripts\sync.ps1 -Target global -Skill "bibi"
+.\scripts\sync.ps1 -Target project -ProjectPath "D:\Path\To\YourProject" -Skill "react-patterns"
+
+# Hoặc kích hoạt toàn bộ 1 danh mục (ví dụ: 05-security-compliance)
+.\scripts\sync.ps1 -Target project -ProjectPath "D:\Path\To\YourProject" -Category "05-security-compliance"
+```
 
 ---
 

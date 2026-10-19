@@ -32,7 +32,24 @@ rsync -av --exclude=".*" --exclude="*.key" --exclude="*.pem" "$REPO_ROOT/skills/
 
 if [ -d "$REPO_ROOT/_external" ]; then
     echo "--> Đồng bộ các skills external..."
-    rsync -av --exclude=".*" "$REPO_ROOT/_external/" "$DEST_SKILLS/"
+    if [ "$TARGET" = "global" ]; then
+        # Mặc định ở global mode chỉ đồng bộ các core external skills
+        GLOBAL_EXTERNAL=("docx" "pptx" "pdf" "xlsx" "skill-creator")
+        for gSkill in "${GLOBAL_EXTERNAL[@]}"; do
+            found_dir=$(find "$REPO_ROOT/_external" -type d -name "$gSkill" | head -n 1)
+            if [ -n "$found_dir" ] && [ -f "$found_dir/SKILL.md" ]; then
+                echo "    + [Skill] $gSkill -> $DEST_SKILLS/$gSkill"
+                rsync -av --exclude=".*" --exclude="*.key" --exclude="*.pem" "$found_dir/" "$DEST_SKILLS/$gSkill/"
+            fi
+        done
+    else
+        # Ở project mode: sao chép phẳng từng skill vào destination
+        find "$REPO_ROOT/_external" -name "SKILL.md" | while read -r skill_file; do
+            s_dir="$(dirname "$skill_file")"
+            s_name="$(basename "$s_dir")"
+            rsync -av --exclude=".*" --exclude="*.key" --exclude="*.pem" "$s_dir/" "$DEST_SKILLS/$s_name/"
+        done
+    fi
 fi
 
 echo "--> Đồng bộ các rules..."
