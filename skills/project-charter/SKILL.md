@@ -11,7 +11,7 @@ description: >-
   process and architecture.
 license: MIT
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   origin: skills-repo
   scope: global
 ---
@@ -91,6 +91,12 @@ Detect, then report in two lines. Never ask about anything found here.
 6. **Skills library.** `SKILLS_HOME` is the `SKILLS_HOME` environment variable when it is set; otherwise
    ask once in round 5 — never guess a path. Confirm it holds `skills/` and `_external/`, and list the
    global skill directories that exist. Needed for Phase 2's skill selection.
+7. **Ignore truth.** In a git repo, run
+   `git check-ignore --no-index -v AGENTS.md .agents/context/charter.md .agents/skills/REGISTRY.md`.
+   If a global excludes file (`~/.gitignore_global`, whatever `git config --global core.excludesFile`
+   says) or `.git/info/exclude` matches, say so in the recon summary and put the `!.agents/` re-include
+   into the Phase 2 plan under "Will modify: .gitignore". Never edit the user's global file; offer that
+   as an option only.
 
 ## Phase 1 — Interview
 
@@ -132,7 +138,8 @@ Will create:
   - .agents/rules/40-git-workflow.md
   - .agents/rules/50-security-safety.md
   - .agents/skills/REGISTRY.md, .agents/skills.manifest.json
-Will modify: .gitignore (.agents/skills/* + !.agents/skills/REGISTRY.md, .claude/skills/)
+Will modify: .gitignore (!.agents/ if a global excludes file matched, then .agents/skills/*
+             + !.agents/skills/REGISTRY.md, .claude/skills/)
 Will NOT touch: <existing docs, existing config, source code>
 ```
 
@@ -197,7 +204,8 @@ Write exactly what was approved. Nothing more.
 - **Existing config** — when `AGENTS.md`/`CLAUDE.md` already existed, write the approved merge: move
   anything that lived only in `CLAUDE.md` into `AGENTS.md`, then reduce `CLAUDE.md` to the import.
 - **`.gitignore`** — ignore the folder's contents, not the folder: `.agents/skills/*`,
-  `!.agents/skills/REGISTRY.md`, and `.claude/skills/` when the mirror is used. Run
+  `!.agents/skills/REGISTRY.md`, and `.claude/skills/` when the mirror is used. Add `!.agents/` as the
+  first line when a global excludes file ignores `.agents/` (Phase 0 step 7). Run
   `git ls-files .agents/skills .claude/skills` first; if anything there is already tracked, stop and ask.
 - **Manifest + registry** — write provenance for each installed skill.
 - **Commit** — the charter is committed, but never silently: list the files you propose to commit, and

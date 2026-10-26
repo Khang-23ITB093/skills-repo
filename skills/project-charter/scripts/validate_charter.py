@@ -27,6 +27,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 
 AGENTS_MD_MAX_LINES = 100
 AGENTS_MD_MAX_BYTES = 32 * 1024
@@ -395,26 +396,33 @@ def check_context(root: str, report: Report) -> None:
     charter = os.path.join(root, ".agents", "context", "charter.md")
     if not os.path.isfile(charter):
         return
-    text = read_text(charter)
+    # Vietnamese is routinely typed in NFD (combining marks), so the letter a
+    # with a circumflex is two code points: a raw literal compare would miss it.
+    text = unicodedata.normalize("NFC", read_text(charter))
     lower = text.lower()
     # The charter is written in the user's language, so the heading can be
     # Vietnamese. Match either spelling, then judge the bullets under it.
-    heading = re.search(r"(?im)^#{1,6}\s*(open questions|cĂ¢u há»i má»Ÿ|cau hoi mo)\s*$", lower)
+    heading = re.search(
+        r"(?im)^#{1,6}\s*(open questions|c\u00e2u h\u1ecfi m\u1edf|cau hoi mo)\s*$", lower)
     if heading is None:
-        report.warn("Open questions section", "no 'Open questions' / 'CĂ¢u há»i má»Ÿ' heading found")
+        report.warn("Open questions section",
+                    "no 'Open questions' / 'C\u00e2u h\u1ecfi m\u1edf' heading found")
         return
     tail = lower[heading.end():]
     next_heading = re.search(r"(?m)^#{1,6}\s", tail)
     section = tail[: next_heading.start()] if next_heading else tail
     bullets = [line.strip() for line in section.splitlines() if line.strip().startswith(("-", "*"))]
-    resolved = {"none", "khĂ´ng", "khong", "n/a", "-"}
+    resolved = {"none", "kh\u00f4ng", "khong", "n/a", "-"}
     open_items = [b for b in bullets if b.lstrip("-* ").strip().strip(".") not in resolved]
     if not open_items:
         report.add("Open questions resolved", True, "")
         return
-    # A bullet that names what it blocks is a gate, not a note.
+    # A bullet that names what it blocks is a gate, not a note. "chan" is the
+    # Vietnamese word for "blocks", so a charter written in Vietnamese cannot
+    # slip a blocking item past the gate by using its own language.
     blocking = [b for b in open_items
-                if re.search(r"blocks?\s*[:=]\s*(?!none\b|khĂ´ng\b|khong\b|n/a\b|-)\S", b)]
+                if re.search(r"(?:blocks?|ch\u1eb7n|chan)\s*[:=]\s*"
+                             r"(?!none\b|kh\u00f4ng\b|khong\b|n/a\b|-)\S", b)]
     report.add("Open questions not blocking", not blocking,
                f"blocks: {', '.join(blocking)[:160]}" if blocking else "")
     if open_items and not blocking:
@@ -806,11 +814,42 @@ def check_gitignore(root: str, has_skills: bool, require_claude: bool, report: R
         ignored = {label: via_git[rel] for label, rel in probes.items()}
         method = "git check-ignore"
 
-    def source(label: str) -> str:
-        if method != "git check-ignore":
+    sources = {label: git_ignore_source(root, rel) for label, rel in probes.items()} \
+        if method == "git check-ignore" else {}
+
+    def external_source(label: str) -> str:
+        """The exclude file that matched, when it is not this project's .gitignore.
+
+        A global `core.excludesFile` (or `.git/info/exclude`) holding `.agents/`
+        ignores every charter on the machine, and no edit to the project
+        .gitignore fixes it alone. Blaming the project's own patterns there sends
+        the user to the wrong file, so the two cases get different advice.
+        """
+        found = sources.get(label, "")
+        if not found:
             return ""
-        found = git_ignore_source(root, probes[label])
+        # check-ignore -v prints `<source>:<line>:<pattern>`; the file is the point.
+        path = found.rsplit(":", 2)[0].strip()
+        if not os.path.isabs(path) or not os.path.exists(path):
+            return ""  # relative, `::` (command line) or gone => not an outside file
+        try:
+            if os.path.normcase(os.path.realpath(path)) == \
+                    os.path.normcase(os.path.realpath(os.path.join(root, ".gitignore"))):
+                return ""
+        except OSError:
+            return ""
+        return path
+
+    def source(label: str) -> str:
+        found = sources.get(label, "")
         return f" (matched by {found})" if found else ""
+
+    def hint(label: str) -> str:
+        found = external_source(label)
+        if found:
+            return (f"ignored by {found} (outside this repo); add '!.agents/' as the first line "
+                    f"of the project .gitignore, or remove '.agents/' from that file")
+        return ""
 
     if has_skills:
         report.add("Vendored skills ignored", ignored["vendored skill file"],
@@ -824,14 +863,17 @@ def check_gitignore(root: str, has_skills: bool, require_claude: bool, report: R
 
     report.add("REGISTRY.md not ignored", not ignored["REGISTRY.md"],
                "" if not ignored["REGISTRY.md"]
-               else "a bare '.agents/skills/' also hides the registry: ignore '.agents/skills/*' "
-                    f"and re-include '!.agents/skills/REGISTRY.md'{source('REGISTRY.md')}")
+               else hint("REGISTRY.md") or
+               "a bare '.agents/skills/' also hides the registry: ignore '.agents/skills/*' "
+               f"and re-include '!.agents/skills/REGISTRY.md'{source('REGISTRY.md')}")
     report.add("Manifest not ignored", not ignored["manifest"],
                "" if not ignored["manifest"]
-               else f"skills.manifest.json must be committed{source('manifest')}")
+               else hint("manifest") or
+               f"skills.manifest.json must be committed{source('manifest')}")
     for label in ("AGENTS.md", "CLAUDE.md", "charter context", "rule file"):
         if ignored[label]:
             report.add(f"Charter not ignored ({label})", False,
+                       hint(label) or
                        f"the charter must be committed to be shared{source(label)}")
 
 

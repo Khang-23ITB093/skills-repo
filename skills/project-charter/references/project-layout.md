@@ -135,7 +135,7 @@ silently**, so keep the key spelled exactly.
 | Claude Code | `<root>/.claude/skills/` (and in any parent up to repo root) | `~/.claude/skills/` |
 | Codex | `.agents/skills/` from cwd up to repo root | `~/.agents/skills/` |
 | Cursor | `.agents/skills/` **and** `.cursor/skills/` | `~/.agents/skills/` **and** `~/.cursor/skills/` |
-| DSH | unverified | unverified — bundled skills ship in the app's `runtime/office-skills/` |
+| DSH | unverified | `~/.dsh/skills/` (verified in practice) — bundled skills also ship in the app's `runtime/office-skills/` |
 
 `~/.agents/skills/` is the closest thing to a universal user-level location (Codex, Cursor, and
 Antigravity-compatible tooling). Claude Code needs its own copy.
@@ -165,7 +165,8 @@ duplicates at all). Unique names make precedence irrelevant.
   the `.claude/skills/` mirror is mandatory whenever Claude Code is a target host, not optional.
 - Antigravity is absent from the official Agent Skills client showcase despite calling skills an open
   standard, and documents narrower frontmatter than the spec.
-- DSH's skill discovery directory is undocumented; its `SKILL.md` shape (name + description, catalog of
+- DSH loads global skills from `~/.dsh/skills/<name>/SKILL.md` (verified in practice 2026-10-27); its
+  project-level skill directory is undocumented, while its `SKILL.md` shape (name + description, catalog of
   summaries) and its reading of `AGENTS.md` are verified in practice.
 
 When a layout choice depends on an unverified point, say so and let the user decide rather than

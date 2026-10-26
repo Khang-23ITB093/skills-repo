@@ -52,6 +52,9 @@ empty after a fresh clone, reinstall the listed skills from
 `.agents/skills.manifest.json` — vendored skills are never committed.
 
 ## Detail
+List only the rule files actually generated — Phase 2 omits rules that would
+only restate a global rule, and the validator fails on a reference to a missing
+file.
 - Working agreement: `.agents/rules/30-collaboration.md`
 - Code standards: `.agents/rules/20-code-standards.md`
 - Git: `.agents/rules/40-git-workflow.md`
@@ -340,11 +343,18 @@ Newest first. Add an entry **before** the corresponding code change.
 ## `.gitignore` additions
 
 ```gitignore
+# Only when a global excludes file (core.excludesFile) ignores .agents/ - it must
+# come first, so the patterns below can re-include what the charter needs.
+!.agents/
 # Vendored third-party skills — reproduce via .agents/skills.manifest.json
 .agents/skills/*
 !.agents/skills/REGISTRY.md
 .claude/skills/
 ```
+
+Add the `!.agents/` line **only** when Phase 0 found a global excludes file or `.git/info/exclude`
+ignoring `.agents/`, and keep it the first line: without it every charter file on that machine is
+invisible to git, and no later pattern can re-include a file inside an excluded directory.
 
 Ignore the folder's **contents**, never the folder itself: Git cannot re-include a file whose parent
 directory is excluded, so a bare `.agents/skills/` silently drops `REGISTRY.md`. Before applying this,
