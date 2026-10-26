@@ -269,17 +269,23 @@ if (Test-Path $ExternalDir) {
             }
         }
     } else {
-        # Project scope with no filter: the whole library. Usually NOT what you want -
-        # prefer the curated set chosen by the project-charter skill.
-        Write-Warning "No -Skill or -Category given: copying ALL external skills into the project."
-        Write-Warning "This can exceed the project context budget. Prefer -Skill <name> for a curated set."
-        $matches = Get-ChildItem -Path $ExternalDir -Filter "SKILL.md" -Recurse
-        foreach ($entry in $plan) {
-            if (-not $DryRun) { New-Item -ItemType Directory -Force -Path $entry.SkillDir | Out-Null }
-            foreach ($m in $matches) {
-                Copy-SkillFlat -SkillDir $m.Directory.FullName -Destination $entry.SkillDir
-            }
+        # Project scope with no filter: do NOT copy the library. Choosing a
+        # curated set is the project-charter skill's job, and AGENTS.md forbids
+        # installing the whole library. Print what is available and how to ask
+        # for it instead of silently writing 400+ skill folders.
+        $categories = @(Get-ChildItem -Directory -Path $ExternalDir)
+        $totalExternal = @($categories | ForEach-Object {
+            @(Get-ChildItem -Path $_.FullName -Filter "SKILL.md" -Recurse)
+        }).Count
+        Write-Host ("    No external skills copied: project installs are curated (see AGENTS.md and project-charter).") -ForegroundColor Yellow
+        Write-Host ("    _external/ has $totalExternal skills in $($categories.Count) categories:") -ForegroundColor DarkGray
+        foreach ($cat in $categories) {
+            $count = @(Get-ChildItem -Path $cat.FullName -Filter "SKILL.md" -Recurse).Count
+            Write-Host ("      {0} ({1})" -f $cat.Name, $count) -ForegroundColor DarkGray
         }
+        Write-Host "    Next:" -ForegroundColor Cyan
+        Write-Host "      .\sync.ps1 -Target project -ProjectPath `"$ProjectPath`" -Category <category> -Hosts $($ResolvedHosts -join ',')" -ForegroundColor DarkGray
+        Write-Host "      .\sync.ps1 -Target project -ProjectPath `"$ProjectPath`" -Skill <skill-name> -Hosts $($ResolvedHosts -join ',')" -ForegroundColor DarkGray
     }
 }
 

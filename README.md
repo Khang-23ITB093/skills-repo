@@ -123,7 +123,7 @@ python skills/project-charter/scripts/validate_charter.py <duong-dan-project> --
 
 Script kiểm: sự tồn tại và độ dài `AGENTS.md`, frontmatter skill, mirror `.claude/`, secret lọt vào charter, đường dẫn tuyệt đối cá nhân, placeholder chưa điền, và **`.gitignore` có che mất charter hay không**.
 
-> Về kiểm tra `.gitignore`: khi project là git repo, script hỏi thẳng `git check-ignore --no-index` nên kết quả trùng git. Khi không có git, script dùng fallback mô phỏng quy tắc glob của git; fallback xử lý đúng các pattern thường dùng (`.agents/skills/*`, `!.agents/skills/REGISTRY.md`, `.agents/`, `skills/`, `/AGENTS.md`), nhưng **chưa mô phỏng chính xác dạng `dir/**/`** và sẽ cảnh báo `WARN Ignore check` khi phải dùng fallback.
+> Về kiểm tra `.gitignore`: khi project là git repo, script hỏi thẳng `git check-ignore --no-index` nên kết quả luôn trùng git. Khi không có git, script dùng fallback mô phỏng lại quy tắc glob của git (`*`/`?` không vượt `/`, `**` vượt cấp, `dir/` là directory-only, `dir/**` không khớp chính `dir`); fallback đã được đối chiếu với git thật trên **384 quyết định** và khớp toàn bộ. Khi phải dùng fallback, script vẫn in `WARN Ignore check` để bạn biết kết quả là suy luận, không phải git phán.
 
 **Cấu trúc sinh ra trong dự án:**
 
@@ -186,6 +186,8 @@ Nếu chỉ muốn áp dụng bộ skills/rules cho một repo dự án xác đ�
 ```
 *Tệp sẽ được đồng bộ vào `YourProject/.agents/skills/` + `.agents/rules/`, và mirror sang `.claude/skills/` khi chọn host `claude`.*
 
+> ⚠️ **Lệnh này chỉ đồng bộ 9 skill nội bộ + toàn bộ rules.** Nó **không** copy 412 external skill — vì chọn bộ skill có chọn lọc là việc của `project-charter`, và `AGENTS.md` cấm cài cả thư viện. Muốn thêm external skill, dùng Cách 3.
+
 ---
 
 ### Cách 3: Kích hoạt Kỹ năng Chuyên biệt từ Thư viện `_external/`
@@ -198,6 +200,8 @@ Tra cứu danh mục tại [`_external/CATALOG.md`](_external/CATALOG.md) và k�
 # Hoặc kích hoạt toàn bộ 1 danh mục (ví dụ: 05-security-compliance)
 .\scripts\sync.ps1 -Target project -ProjectPath "D:\Path\To\YourProject" -Category "05-security-compliance"
 ```
+
+> 💡 Không truyền `-Skill` hay `-Category` thì script liệt kê 12 danh mục kèm số skill trong mỗi danh mục, và in sẵn câu lệnh gợi ý — để bạn chọn thay vì nhồi cả 412 skill vào dự án.
 
 > 💡 Thêm `-DryRun` để xem trước sẽ ghi những gì mà không tạo file. Skill cũ **không bao giờ bị ghi đè** trừ khi bạn thêm `-Force`.
 
