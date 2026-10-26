@@ -399,22 +399,22 @@ def check_context(root: str, report: Report) -> None:
     lower = text.lower()
     # The charter is written in the user's language, so the heading can be
     # Vietnamese. Match either spelling, then judge the bullets under it.
-    heading = re.search(r"(?im)^#{1,6}\s*(open questions|câu hỏi mở|cau hoi mo)\s*$", lower)
+    heading = re.search(r"(?im)^#{1,6}\s*(open questions|cĂ¢u há»i má»Ÿ|cau hoi mo)\s*$", lower)
     if heading is None:
-        report.warn("Open questions section", "no 'Open questions' / 'Câu hỏi mở' heading found")
+        report.warn("Open questions section", "no 'Open questions' / 'CĂ¢u há»i má»Ÿ' heading found")
         return
     tail = lower[heading.end():]
     next_heading = re.search(r"(?m)^#{1,6}\s", tail)
     section = tail[: next_heading.start()] if next_heading else tail
     bullets = [line.strip() for line in section.splitlines() if line.strip().startswith(("-", "*"))]
-    resolved = {"none", "không", "khong", "n/a", "-"}
+    resolved = {"none", "khĂ´ng", "khong", "n/a", "-"}
     open_items = [b for b in bullets if b.lstrip("-* ").strip().strip(".") not in resolved]
     if not open_items:
         report.add("Open questions resolved", True, "")
         return
     # A bullet that names what it blocks is a gate, not a note.
     blocking = [b for b in open_items
-                if re.search(r"blocks?\s*[:=]\s*(?!none\b|không\b|khong\b|n/a\b|-)\S", b)]
+                if re.search(r"blocks?\s*[:=]\s*(?!none\b|khĂ´ng\b|khong\b|n/a\b|-)\S", b)]
     report.add("Open questions not blocking", not blocking,
                f"blocks: {', '.join(blocking)[:160]}" if blocking else "")
     if open_items and not blocking:
@@ -611,90 +611,55 @@ def _glob_match(pattern: str, target: str) -> bool:
 
 
 def pattern_matches(pattern: str, rel: str, is_dir: bool = False) -> bool:
-    """Does one gitignore pattern answer "yes" for this path.
+    """Does THIS pattern match THIS path, as git tests one pattern.
 
-    `ignored_by_patterns` runs the last-match-wins pass over these answers, so
-    only "did this pattern match" matters here. Git's rules, applied literally:
+    The answer here is deliberately narrow: only the path itself, never a
+    directory above it. Containment is `excluded_ancestor`'s job, and keeping
+    the two apart is what makes a negation behave like git's. When this
+    function also answered "or the parent matches", a negation such as `!foo/`
+    rescued `foo/x.txt` from `*`, and `.agents/**/` wrongly re-included a file
+    whose parent it had just excluded.
 
-    - a pattern with no slash after its trailing one is a *name*: it matches
-      that name at any depth, with or without a trailing slash;
+    - a slash-free pattern is a name and is tested against the basename;
     - any other slash anchors the pattern to the project root, and a leading
-      slash only says that out loud;
-    - a trailing slash makes the pattern directory-only: it is tried against
-      directories, never against a file, and it covers what those directories
-      contain;
+      slash only says so out loud;
+    - a trailing slash means "a directory": false for a plain file;
     - `**/`, `/**` and `/**/` cross path levels; `*` and `?` never do;
-    - `dir/**` covers what is inside `dir`, never `dir` itself;
-    - a directory the pattern matches hides everything below it.
-
-    `is_dir` says the caller knows `rel` is a directory. `excluded_ancestor`
-    always does, because it only asks about ancestors; that is what lets a
-    known directory satisfy a wildcard directory rule like `.agents/skills/*/`,
-    which cannot be judged from the text alone.
+    - `dir/**` covers what is inside `dir`, never `dir` itself.
     """
-    trailing_slash = pattern.endswith("/")
-    # A trailing slash is a directory *rule*, not part of the name: git says so
-    # itself, because `.agents/skills/*/` must match the directory `demo`
-    # although `*` cannot match the `/` the written pattern ends with.
+    dir_only = pattern.endswith("/")
+    # Anchoring is a property of the pattern as written: `.agents/**` contains
+    # a slash even though the `/**` is removed below, and `/AGENTS.md` is
+    # anchored by its leading slash.
+    prose = pattern[1:] if pattern.startswith("!") else pattern
+    anchored = prose.strip("/") != prose.strip("/").rsplit("/", 1)[-1] \
+        or prose.startswith("/")
     body = pattern.rstrip("/")
     trailing_globstar = body.endswith("/**")
     if trailing_globstar:
         body = body[:-3].rstrip("/")
-    anchored = body.startswith("/") or "/" in body
     body = body.strip("/")
     if not body:
-        # `/` alone matches nothing in git.
+        # `/` on its own matches nothing in git.
         return False
 
-    regex = _glob_regex(body)
-    # A pattern that names a directory also hides everything inside it.
-    below = "(?:/[^/].*)?"
-    parts = rel.split("/")
-    # Ancestors of the path, shallow to deep.
-    ancestors = ["/".join(parts[:index]) for index in range(1, len(parts))]
-
     if trailing_globstar:
-        # `dir/**` covers everything inside `dir`, never `dir` itself.
-        #
-        # `dir/**/` differs in one way that matters: git reads the pattern as
-        # the directories inside `dir` (`.agents/**/` does not match a file
-        # directly in `.agents/`, but does match `.agents/context/`, and so
-        # hides what is inside that). A file is therefore reached through a
-        # matching *directory above it*, never as itself, which is why
-        # `!dir/**/` cannot re-include a file that `dir/**` excluded.
-        if trailing_slash:
-            # Candidates are the directories inside `dir`: its ancestors below
-            # `dir`, plus `rel` itself when the caller says it is a directory.
-            candidates = [ancestor for ancestor in ancestors
-                          if ancestor != body and ancestor.startswith(body + "/")]
-            if is_dir and rel != body and rel.startswith(body + "/"):
-                candidates.append(rel)
-            return any(re.fullmatch(regex, candidate) is not None
-                       for candidate in candidates)
-        return any(re.fullmatch(regex, ancestor) is not None for ancestor in ancestors)
+        # `dir/**` is "everything inside dir", so at least one more segment.
+        # The globstar already spans every depth, so `dir/**/` adds only one
+        # thing: the pattern is then directory-only - which the caller learns
+        # from `is_dir`, not from this string.
+        regex = _glob_regex(body) + "/.+"
+    else:
+        regex = _glob_regex(body)
 
-    if trailing_slash:
-        # Directory-only: the pattern must match a directory. It covers that
-        # directory's contents, and when the caller says the path is a directory
-        # the path itself is a candidate too.
-        directory_regex = regex + "(?:/[^/].*)?"
-        if not anchored:
-            # A bare `dir/` is a name: "a directory called dir, at any depth".
-            return any(re.fullmatch(directory_regex, segment) is not None
-                       for segment in (parts if is_dir else parts[:-1]))
-        candidates = ancestors + ([rel] if is_dir else [])
-        return any(re.fullmatch(directory_regex, candidate) is not None
-                   for candidate in candidates)
+    if dir_only and not is_dir:
+        # git never tries a directory pattern against a plain file, so
+        # `.agents/**/` cannot hide `.agents/notes.txt` - only a directory
+        # inside `.agents/`, and through it the file.
+        return False
 
-    if not anchored:
-        # A bare name matches a segment at any depth, and that segment hiding a
-        # directory hides its contents.
-        return any(re.fullmatch(regex, segment) is not None for segment in parts)
-
-    # The path itself, or a directory above it the pattern names - which hides
-    # everything inside that directory.
-    return re.fullmatch(regex, rel) is not None or any(
-        re.fullmatch(regex + below, ancestor) is not None for ancestor in ancestors)
+    target = rel if anchored else rel.rsplit("/", 1)[-1]
+    return re.fullmatch(regex, target) is not None
 
 
 def excluded_ancestor(rel: str, patterns: list[str]) -> str | None:
