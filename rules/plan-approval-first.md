@@ -21,7 +21,10 @@ Whenever the user requests a new feature, bug fix, architectural change, code re
 ## 2. Explicit User Approval Requirement
 - You may only begin execution when the user:
   1. Clicks the **Proceed** button on the plan artifact, OR
-  2. Gives clear, explicit approval in chat (e.g., "Duyệt", "Tiến hành đi", "OK làm đi", "Approved", "Go ahead").
+  2. Gives clear, explicit approval in chat. Use one fixed keyword set everywhere —
+     `duyệt`, `ok`, `làm đi`, `approve`, `lgtm`, `proceed`, `go ahead` — and when the `project-charter`
+     skill recorded a different set for this project (its Q4.3 answer), that set wins.
+     "Tiến hành đi", "Approved" and "Go ahead" count through those keywords; a bare "chắc là ổn" does not.
 - If the user provides feedback, critiques, or asks for adjustments:
   - Revise the plan artifact accordingly.
   - Summarize key changes.
