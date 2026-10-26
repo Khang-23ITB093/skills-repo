@@ -96,7 +96,7 @@ FENCE_LINE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})(.*)$")
 SHELL_FENCE_LABELS = {"bash", "sh", "zsh", "shell", "console", "cmd", "powershell", "ps1", "pwsh"}
 # `<...>`, `<…>` and `<placeholder>` are all template leftovers. The lookbehind
 # keeps generic types (`List<String>`, `Promise<void>`) out of the report.
-PLACEHOLDER_RE = re.compile(r"(?<![A-Za-z0-9_])<\.{2,}>|<…>|(?<![A-Za-z0-9_])<[A-Za-z][^<>\n]{0,60}>")
+PLACEHOLDER_RE = re.compile(r"(?<![A-Za-z0-9_])<\.{2,}>|<\u2026>|(?<![A-Za-z0-9_])<[A-Za-z][^<>\n]{0,60}>")
 # Claude-only substitutions: these are left as literal text by other hosts.
 HOST_SPECIFIC_TOKENS = (r"\$\{CLAUDE_[A-Z_]+\}", r"\$ARGUMENTS")
 
@@ -553,48 +553,187 @@ def read_gitignore(root: str) -> list[str] | None:
     return patterns
 
 
-def pattern_matches(pattern: str, rel: str) -> bool:
-    """Approximate gitignore semantics for one relative path."""
-    body = pattern.lstrip("/")
-    directory = body.endswith("/")
-    body = body.rstrip("/")
+def _glob_regex(pattern: str) -> str:
+    """Translate a gitignore glob into a regex.
+
+    Character by character on purpose: `fnmatch` turns every `*` into `.*`,
+    which crosses a `/` where git's `*` stops at it, and `fnmatch` has no
+    meaning for `**`. Only these metacharacters exist in a gitignore glob:
+    `*` (not across `/`), `?` (one character, not `/`), `[...]`, and the
+    `**/` / `/**` / `/**/` forms.
+    """
+    out: list[str] = []
+    index = 0
+    length = len(pattern)
+    while index < length:
+        char = pattern[index]
+        if char == "*":
+            if pattern.startswith("**", index):
+                # `/**/` or a leading `**/`: zero or more path levels.
+                after = index + 2
+                if pattern.startswith("/", after):
+                    out.append("(?:.*/)?")
+                    index = after + 1
+                    continue
+                out.append(".*")
+                index = after
+                continue
+            out.append("[^/]*")
+            index += 1
+            continue
+        if char == "?":
+            out.append("[^/]")
+            index += 1
+            continue
+        if char == "[":
+            close = pattern.find("]", index + 1)
+            if close == -1:
+                out.append(re.escape(char))
+                index += 1
+                continue
+            body = pattern[index + 1:close]
+            if body.startswith("!"):
+                body = "^" + body[1:]
+            out.append("[" + body.replace("\\", "\\\\") + "]")
+            index = close + 1
+            continue
+        out.append(re.escape(char))
+        index += 1
+    return "".join(out)
+
+
+def _glob_match(pattern: str, target: str) -> bool:
+    """Git glob for one path, where `*` never crosses a `/`."""
+    try:
+        return re.fullmatch(_glob_regex(pattern), target) is not None
+    except re.error:
+        return fnmatch.fnmatchcase(target, pattern)
+
+
+def pattern_matches(pattern: str, rel: str, is_dir: bool = False) -> bool:
+    """Does one gitignore pattern answer "yes" for this path.
+
+    `ignored_by_patterns` runs the last-match-wins pass over these answers, so
+    only "did this pattern match" matters here. Git's rules, applied literally:
+
+    - a pattern with no slash after its trailing one is a *name*: it matches
+      that name at any depth, with or without a trailing slash;
+    - any other slash anchors the pattern to the project root, and a leading
+      slash only says that out loud;
+    - a trailing slash makes the pattern directory-only: it is tried against
+      directories, never against a file, and it covers what those directories
+      contain;
+    - `**/`, `/**` and `/**/` cross path levels; `*` and `?` never do;
+    - `dir/**` covers what is inside `dir`, never `dir` itself;
+    - a directory the pattern matches hides everything below it.
+
+    `is_dir` says the caller knows `rel` is a directory. `excluded_ancestor`
+    always does, because it only asks about ancestors; that is what lets a
+    known directory satisfy a wildcard directory rule like `.agents/skills/*/`,
+    which cannot be judged from the text alone.
+    """
+    trailing_slash = pattern.endswith("/")
+    # A trailing slash is a directory *rule*, not part of the name: git says so
+    # itself, because `.agents/skills/*/` must match the directory `demo`
+    # although `*` cannot match the `/` the written pattern ends with.
+    body = pattern.rstrip("/")
+    trailing_globstar = body.endswith("/**")
+    if trailing_globstar:
+        body = body[:-3].rstrip("/")
+    anchored = body.startswith("/") or "/" in body
+    body = body.strip("/")
     if not body:
+        # `/` alone matches nothing in git.
         return False
-    if fnmatch.fnmatch(rel, body):
-        return True
-    if directory:
-        return rel == body or rel.startswith(body + "/")
-    # A slash-free pattern matches at any depth.
-    return "/" not in body and fnmatch.fnmatch(rel.rsplit("/", 1)[-1], body)
+
+    regex = _glob_regex(body)
+    # A pattern that names a directory also hides everything inside it.
+    below = "(?:/[^/].*)?"
+    parts = rel.split("/")
+    # Ancestors of the path, shallow to deep.
+    ancestors = ["/".join(parts[:index]) for index in range(1, len(parts))]
+
+    if trailing_globstar:
+        # `dir/**` covers everything inside `dir`, never `dir` itself.
+        #
+        # `dir/**/` differs in one way that matters: git reads the pattern as
+        # the directories inside `dir` (`.agents/**/` does not match a file
+        # directly in `.agents/`, but does match `.agents/context/`, and so
+        # hides what is inside that). A file is therefore reached through a
+        # matching *directory above it*, never as itself, which is why
+        # `!dir/**/` cannot re-include a file that `dir/**` excluded.
+        if trailing_slash:
+            # Candidates are the directories inside `dir`: its ancestors below
+            # `dir`, plus `rel` itself when the caller says it is a directory.
+            candidates = [ancestor for ancestor in ancestors
+                          if ancestor != body and ancestor.startswith(body + "/")]
+            if is_dir and rel != body and rel.startswith(body + "/"):
+                candidates.append(rel)
+            return any(re.fullmatch(regex, candidate) is not None
+                       for candidate in candidates)
+        return any(re.fullmatch(regex, ancestor) is not None for ancestor in ancestors)
+
+    if trailing_slash:
+        # Directory-only: the pattern must match a directory. It covers that
+        # directory's contents, and when the caller says the path is a directory
+        # the path itself is a candidate too.
+        directory_regex = regex + "(?:/[^/].*)?"
+        if not anchored:
+            # A bare `dir/` is a name: "a directory called dir, at any depth".
+            return any(re.fullmatch(directory_regex, segment) is not None
+                       for segment in (parts if is_dir else parts[:-1]))
+        candidates = ancestors + ([rel] if is_dir else [])
+        return any(re.fullmatch(directory_regex, candidate) is not None
+                   for candidate in candidates)
+
+    if not anchored:
+        # A bare name matches a segment at any depth, and that segment hiding a
+        # directory hides its contents.
+        return any(re.fullmatch(regex, segment) is not None for segment in parts)
+
+    # The path itself, or a directory above it the pattern names - which hides
+    # everything inside that directory.
+    return re.fullmatch(regex, rel) is not None or any(
+        re.fullmatch(regex + below, ancestor) is not None for ancestor in ancestors)
 
 
 def excluded_ancestor(rel: str, patterns: list[str]) -> str | None:
-    """The nearest ancestor directory excluded by a non-negated pattern.
+    """The nearest ancestor directory that ends up excluded.
 
-    Git cannot re-include a file whose parent directory is excluded, so a
-    `!include` must never rescue a path under one. Without this the fallback
-    reported `.agents/skills/` + `!.agents/skills/REGISTRY.md` as committed when
-    the registry is in fact unreachable — the original defect, back again.
+    Git decides by last match wins, negations included, and a negation CAN
+    rescue an ancestor that an earlier pattern excluded — that is exactly how
+    the whitelist idiom (`.agents/*` + `!.agents/skills/`) works. Treating any
+    non-negated hit as final reported those files as ignored and failed a
+    correct project, so each ancestor is evaluated with the full pass.
     """
     parts = rel.split("/")[:-1]
     for index in range(1, len(parts) + 1):
         ancestor = "/".join(parts[:index])
+        state = False
         for pattern in patterns:
-            if pattern.startswith("!"):
-                continue
-            # Test the ancestor as a path, never with a trailing slash: `dir/*`
-            # would then match `dir/` through the empty `*` and look like the
-            # directory itself was excluded, which is exactly the confusion that
-            # made a correct `.agents/skills/*` + `!REGISTRY.md` pair read as
-            # "registry ignored".
-            if pattern_matches(pattern, ancestor):
-                return ancestor
+            negated = pattern.startswith("!")
+            body = pattern[1:] if negated else pattern
+            if pattern_matches(body, ancestor, is_dir=True):
+                state = not negated
+        if state:
+            return ancestor
     return None
 
 
 def ignored_by_patterns(rel: str, patterns: list[str]) -> bool:
+    """Git's real rule, applied when git itself cannot be asked.
+
+    One last-match-wins pass over the path and every ancestor directory: the
+    nearest match decides, and an excluded parent directory cannot be rescued
+    by a later negation, which is why `excluded_ancestor` is asked first.
+    """
     if excluded_ancestor(rel, patterns) is not None:
         return True
+    return last_match(rel, patterns)
+
+
+def last_match(rel: str, patterns: list[str]) -> bool:
+    """Last matching pattern wins; a negation wins by re-including."""
     state = False
     for pattern in patterns:
         negated = pattern.startswith("!")
