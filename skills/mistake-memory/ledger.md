@@ -124,4 +124,34 @@ Additional XML rules:
 
 ---
 
+## [ERR-002] Unverified External API Facts Hard-coded into Skills
+
+- **First Detected**: 2026-10-23
+- **Last Updated**: 2026-10-23
+- **Occurrences**: 1
+- **Trigger**: User-supplied verification report (`ORIMISE-gateway-facts-and-plan.md`)
+- **Severity**: Critical
+
+### Surface Error
+`orimise-deep-planning` được viết với các "sự thật" không còn đúng hoặc chưa từng đúng:
+- Model mặc định `claude-sonnet-4-6` (và haiku-4-5, sonnet-5, fable-5-1) trả 403 `MODEL_DISABLED_FOR_USER` → mọi lệnh mẫu đều thất bại.
+- "Trần output 8.192 token" lấy từ field `max_tokens` của `/v1/models`; trần thật là 128.000. Số sai này sinh ra các luật phòng vệ vô ích (cắt file < 2k token, `--max-tokens 5000`).
+- `--effort` gửi field `thinking` của Anthropic tới `/v1/chat/completions`; không có bằng chứng field này có tác dụng → cấu hình "trang trí".
+- Cờ `git apply --no-symlinks` không tồn tại (`unknown option`) → bước apply patch luôn lỗi.
+- Bộ ước lượng token (3.3 ký tự/token) đếm thiếu ~30% so với usage thật.
+
+### Root Cause Domain
+**Verification → Trusting metadata/memory over a real call**
+
+Các con số được lấy từ metadata của API, tài liệu cũ hoặc trí nhớ của model rồi gắn nhãn `[VERIFIED]` mà không có request chứng minh. Danh mục model của gateway lại thay đổi theo gói tài khoản, nên dữ liệu đúng hôm trước có thể sai hôm sau.
+
+### Prevention Checklist
+- [ ] Chỉ gắn `[VERIFIED <ngày>]` khi có request thật hoặc lệnh chạy thật chứng minh; ghi kèm cách kiểm.
+- [ ] Không tin field giới hạn trong endpoint metadata (`/models`) khi chưa đối chiếu với lỗi 400 thật.
+- [ ] Field đặc thù một API (vd `thinking` của Anthropic) chỉ gửi tới đúng route của API đó; "200 OK" không chứng minh field được áp dụng.
+- [ ] Mọi cờ CLI ghi trong skill phải chạy thử một lần (`<tool> <flag> --help` hoặc lệnh thật) trước khi commit.
+- [ ] Skill phụ thuộc dịch vụ ngoài phải có bước `--probe` đầu phiên và một file `references/` ghi rõ ngày chụp + mục chưa xác minh.
+
+---
+
 *— End of current ledger entries —*
