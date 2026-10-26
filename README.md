@@ -1,6 +1,6 @@
 # Antigravity Team Skills & Rules Repository
 
-Kho lưu trữ tập trung các **Skills** (năng lực / quy trình nghiệp vụ) và **Rules** (tiêu chuẩn / quy tắc cốt lõi) dùng chung cho các AI Agent trong Google Antigravity & Gemini CLI.
+Kho lưu trữ tập trung các **Skills** (năng lực / quy trình nghiệp vụ) và **Rules** (tiêu chuẩn / quy tắc cốt lõi) dùng chung cho các AI Agent: Google Antigravity & Gemini CLI, Claude Code, Codex, Cursor, và DeepSeek Harness (DSH).
 
 > 📖 **Xem thêm**: Đọc [PROJECT.md](docs/PROJECT.md) để hiểu rõ mục đích dự án, triết lý vận hành và cam kết cải tiến liên tục của team.
 
@@ -113,6 +113,18 @@ skills-repo/
 | 4. Kiểm tra | Chạy `validate_charter.py` + checklist trong `references/validation.md`. Báo cáo trung thực, không tuyên bố PASS khống. |
 | 5. Bàn giao | Tóm tắt + câu lệnh mở phiên mới: *"Đọc `AGENTS.md` và `.agents/context/charter.md` rồi tiếp tục."* |
 
+**Kiểm tra charter tự động:**
+
+```powershell
+python skills/project-charter/scripts/validate_charter.py <duong-dan-project>
+python skills/project-charter/scripts/validate_charter.py <duong-dan-project> --claude   # kiểm thêm mirror .claude/
+python skills/project-charter/scripts/validate_charter.py <duong-dan-project> --json     # cho CI
+```
+
+Script kiểm: sự tồn tại và độ dài `AGENTS.md`, frontmatter skill, mirror `.claude/`, secret lọt vào charter, đường dẫn tuyệt đối cá nhân, placeholder chưa điền, và **`.gitignore` có che mất charter hay không**.
+
+> Về kiểm tra `.gitignore`: khi project là git repo, script hỏi thẳng `git check-ignore --no-index` nên kết quả trùng git. Khi không có git, script dùng fallback mô phỏng quy tắc glob của git; fallback xử lý đúng các pattern thường dùng (`.agents/skills/*`, `!.agents/skills/REGISTRY.md`, `.agents/`, `skills/`, `/AGENTS.md`), nhưng **chưa mô phỏng chính xác dạng `dir/**/`** và sẽ cảnh báo `WARN Ignore check` khi phải dùng fallback.
+
 **Cấu trúc sinh ra trong dự án:**
 
 ```text
@@ -130,10 +142,20 @@ skills-repo/
 
 **Hỗ trợ đa agent** (Antigravity · Claude Code · Codex · Cursor · DeepSeek Harness):
 
+| Host | Đọc skill từ | Rule đọc từ |
+| :--- | :--- | :--- |
+| `antigravity` | `~/.gemini/config/skills` | `~/.gemini/config/rules` |
+| `agents` (dùng chung) | `.agents/skills/` | `.agents/rules/` |
+| `claude` | `.claude/skills/` (mirror) | `.agents/rules/` + `CLAUDE.md` |
+| `codex` | `.agents/skills/` | `AGENTS.md` |
+| `cursor` | `.agents/skills/` | `AGENTS.md` |
+| `dsh` | `$DSH_HOME/skills` (mặc định `~/.dsh/skills`) | — |
+
 - `AGENTS.md` ở gốc là file duy nhất **mọi agent đều đọc** → rule bất biến nằm ở đây.
-- `.agents/skills/` được Codex/Cursor/Antigravity đọc; **Claude Code không đọc** → script mirror thêm sang `.claude/skills/`.
+- `.agents/skills/` được Codex/Cursor/Antigravity/DSH đọc; **Claude Code không đọc** → script mirror thêm sang `.claude/skills/`.
 - Frontmatter chỉ dùng 6 khóa portable: `name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`.
 - Không phụ thuộc slash command, hook hay subagent — vì các agent định nghĩa chúng khác nhau.
+- Đường dẫn skill của DSH **chưa được tài liệu hóa chính thức**; script đọc `$DSH_HOME` nếu có, nếu không dùng `~/.dsh/skills`.
 
 ---
 
