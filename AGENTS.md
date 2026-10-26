@@ -56,6 +56,30 @@ skills/<skill_name>/
 
 ---
 
+## 3b. Tính Portable Đa Agent (Antigravity · Claude Code · Codex · Cursor · DSH)
+
+Mọi skill/rule trong repo này phải chạy được trên nhiều agent, không chỉ Antigravity:
+
+1. **Chỉ dùng 6 khóa frontmatter portable**: `name`, `description`, `license`, `compatibility`,
+   `metadata`, `allowed-tools`. TUYỆT ĐỐI không dùng khóa riêng của Claude Code
+   (`disable-model-invocation`, `user-invocable`, `paths`, `context`, `agent`, `hooks`, `model`,
+   `argument-hint`, `when_to_use`…) — chúng bị bỏ qua hoặc gây lỗi cứng khi đóng gói.
+2. **Không dùng biến thay thế riêng của Claude** trong khối lệnh: `${CLAUDE_SKILL_DIR}`,
+   `${CLAUDE_PROJECT_DIR}`, `${CLAUDE_PLUGIN_ROOT}`, `$ARGUMENTS`.
+3. **Không phụ thuộc slash command, hook, subagent hay MCP** cho luồng chính — mỗi agent định nghĩa
+   chúng khác nhau. Cơ chế kích hoạt portable duy nhất là khớp `description`.
+4. **`name` phải trùng tên thư mục**, ≤ 64 ký tự, chữ thường + gạch nối. Đặt tên duy nhất để tránh
+   xung đột thứ tự ưu tiên (các agent quy định khác nhau).
+5. **Giới hạn kích thước**: `SKILL.md` < 500 dòng; mỗi file rule ≤ 24 KB; `.agents/rules/` phẳng
+   1 cấp; tổng rule always-on dưới 20.000 token.
+6. **Trong dự án**, rule bất biến phải nằm ở `AGENTS.md` gốc — file duy nhất mọi agent đều đọc.
+   Chi tiết tách vào `.agents/rules/*.md`. Nếu phục vụ Claude Code thì thêm `CLAUDE.md` chứa đúng
+   `@AGENTS.md` (import, **không** symlink) và mirror skill sang `.claude/skills/`.
+
+Chi tiết đầy đủ + bảng đường dẫn từng host: `skills/project-charter/references/project-layout.md`.
+
+---
+
 ## 4. Bảo mật & An toàn Dữ liệu (Security P0)
 
 1. **Tuyệt đối không lưu trữ Secret**:

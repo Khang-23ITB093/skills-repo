@@ -14,6 +14,7 @@ GLOBAL_DIR: C:/Users/PC/.gemini/config/skills
 | multi-model-orchestration | Own | global | ~/.gemini/config/skills/multi-model-orchestration | local repo | 2026-10-08 | Điều phối model |
 | orimise-deep-planning | Own | global | ~/.gemini/config/skills/orimise-deep-planning | local repo | 2026-10-08 | Ủy quyền model sâu qua Orimise |
 | playwright | Own | global | ~/.gemini/config/skills/playwright | local repo | 2026-10-08 | Kiểm thử trình duyệt |
+| project-charter | Own | global | ~/.gemini/config/skills/project-charter | local repo | 2026-10-26 | Khởi tạo dự án: phỏng vấn, AGENTS.md, chọn skill (đa host) |
 | skill-manager | Own | global | ~/.gemini/config/skills/skill-manager | local repo | 2026-10-08 | Quản lý vòng đời skills |
 | docx | External | global | ~/.gemini/config/skills/docx | anthropics/skills (dbd4588) | 2026-10-19 | Báo cáo, tài liệu Word |
 | pptx | External | global | ~/.gemini/config/skills/pptx | anthropics/skills (dbd4588) | 2026-10-19 | Trình chiếu, slides |

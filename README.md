@@ -30,6 +30,7 @@ skills-repo/
 │   ├── multi-model-orchestration/   # Điều phối phân việc cho 7 model AI
 │   ├── orimise-deep-planning/       # Phân tích sâu & lập kế hoạch qua Orimise API
 │   ├── playwright/                  # Kiểm thử E2E & tự động hóa trình duyệt
+│   ├── project-charter/             # Khởi tạo dự án: phỏng vấn, hiến pháp AGENTS.md, chọn skill
 │   └── skill-manager/               # Quản lý vòng đời, audit, cài đặt skills
 ├── rules/                           # Danh mục các Rules chung
 │   ├── model-routing.md             # Quy tắc điều phối & leo thang model hợp nhất
@@ -40,6 +41,7 @@ skills-repo/
 │   ├── multi_model_escalation.md
 │   ├── orimise-model-routing.md
 │   ├── plan-approval-first.md
+│   ├── project-charter.md
 │   └── project-initialization.md
 ├── _external/                       # Thư viện 412 external skills (12 phân loại chức năng)
 │   ├── 01-documents/                # Văn phòng (Word, Excel, PowerPoint, PDF)
@@ -65,6 +67,7 @@ skills-repo/
 
 | Skill | Mục đích chính | Tệp chính |
 | :--- | :--- | :--- |
+| **`project-charter`** | Khởi tạo dự án: quét repo, phỏng vấn về mục tiêu/kiến trúc/code/cách làm việc, sinh `AGENTS.md` + `.agents/` + cầu nối `CLAUDE.md`, và chọn skill cho dự án. | `skills/project-charter/SKILL.md` |
 | **`skill-manager`** | Quản lý vòng đời, audit bảo mật, cài đặt và đồng bộ skills theo bundle. | `skills/skill-manager/SKILL.md` |
 | **`anthropic-agent-guide`** | Hướng dẫn tối ưu prompt, context engineering, dynamic workflows và chi phí cho Claude. | `skills/anthropic-agent-guide/SKILL.md` |
 | **`codegraph`** | Phân tích call graph, callers/callees, blast radius và chống code duplicate bằng SQLite graph cục bộ. | `skills/codegraph/SKILL.md` |
@@ -80,6 +83,7 @@ skills-repo/
 
 | Rule | Mô tả |
 | :--- | :--- |
+| **`project-charter.md`** | Bắt buộc mọi dự án phải có Project Charter trước khi code; quy định layout đa host (`AGENTS.md`, `.agents/`, cầu nối Claude). |
 | **`model-routing.md`** | Hợp nhất phân tầng model (Workhorse/Economy/Reasoning/Elite), trần token và chỉ thị leo thang. |
 | **`codegraph-intelligence.md`** | Bắt buộc kiểm tra symbol hiện có và blast radius trước khi viết hàm mới hoặc refactor. |
 | **`destructive-operations-safety.md`** | Tuyệt đối cấm tự ý xóa tệp/thư mục mà không có xác nhận rõ ràng từ lập trình viên. |
@@ -92,17 +96,63 @@ skills-repo/
 
 ---
 
+## 🧭 Quy trình Khởi tạo Dự án (`project-charter`)
+
+Đây là quy trình chuẩn để **mọi phiên AI làm việc trên một dự án đều theo cùng một quy trình, kiến trúc và cách cộng tác**. Chạy một lần khi bắt đầu dự án; các phiên sau chỉ cần đọc lại charter.
+
+**Cách kích hoạt:** chỉ cần nói *"khởi tạo dự án"*, *"setup project"*, *"chuẩn hóa quy trình cho dự án này"*, hoặc mở một repo chưa có `AGENTS.md`. Không cần slash command — skill tự khớp theo mô tả nên chạy được trên mọi agent.
+
+**6 pha:**
+
+| Pha | Nội dung |
+| :--- | :--- |
+| 0. Recon | Tự quét stack, git, tài liệu sẵn có, host đang dùng. **Không hỏi những gì repo đã trả lời được.** |
+| 1. Phỏng vấn | 5 vòng: mục tiêu & phạm vi → kiến trúc → code & chất lượng → **cách làm việc với bạn** → skill & host. Mỗi câu đều có đề xuất mặc định. |
+| 2. Kế hoạch | Trình danh sách file sẽ tạo + bảng skill đề xuất (kèm lý do, bằng chứng, nguồn, giấy phép). **Dừng và chờ duyệt.** |
+| 3. Sinh file | `AGENTS.md`, `.agents/rules/*.md`, `.agents/context/*`, cầu nối `CLAUDE.md`, cài skill đã duyệt. |
+| 4. Kiểm tra | Chạy `validate_charter.py` + checklist trong `references/validation.md`. Báo cáo trung thực, không tuyên bố PASS khống. |
+| 5. Bàn giao | Tóm tắt + câu lệnh mở phiên mới: *"Đọc `AGENTS.md` và `.agents/context/charter.md` rồi tiếp tục."* |
+
+**Cấu trúc sinh ra trong dự án:**
+
+```text
+<project>/
+├── AGENTS.md                  # Hiến pháp: bất biến + mục lục (mọi agent đều đọc)
+├── CLAUDE.md                  # Chỉ chứa "@AGENTS.md" (chỉ khi dùng Claude Code)
+└── .agents/
+    ├── rules/*.md             # Rule luôn bật, phẳng, có frontmatter
+    ├── context/charter.md     # Câu trả lời phỏng vấn
+    ├── context/architecture.md# Kiến trúc + nhật ký quyết định
+    ├── skills/                # Skill đã chọn (KHÔNG commit)
+    ├── skills/REGISTRY.md
+    └── skills.manifest.json
+```
+
+**Hỗ trợ đa agent** (Antigravity · Claude Code · Codex · Cursor · DeepSeek Harness):
+
+- `AGENTS.md` ở gốc là file duy nhất **mọi agent đều đọc** → rule bất biến nằm ở đây.
+- `.agents/skills/` được Codex/Cursor/Antigravity đọc; **Claude Code không đọc** → script mirror thêm sang `.claude/skills/`.
+- Frontmatter chỉ dùng 6 khóa portable: `name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`.
+- Không phụ thuộc slash command, hook hay subagent — vì các agent định nghĩa chúng khác nhau.
+
+---
+
 ## 🚀 Hướng dẫn Cài đặt & Sử dụng cho Thành viên Team
 
 Xem hướng dẫn đầy đủ tại [`INSTALL.md`](INSTALL.md).
 
 ### Cách 1: Đồng bộ vào máy cá nhân (Global Scope - Khuyên dùng)
-Áp dụng cho mọi dự án mở trong Antigravity trên máy của bạn:
+Áp dụng cho mọi dự án trên máy của bạn:
 
 ```powershell
+# Chỉ Antigravity (mặc định, giữ tương thích cũ)
 .\scripts\sync.ps1 -Target global
+
+# Hoặc mọi agent đã cài trên máy
+.\scripts\sync.ps1 -Target global -Hosts all
 ```
-*Tất cả skills và rules sẽ được copy trực tiếp vào `~/.gemini/config/skills` và `~/.gemini/config/rules`.*
+
+*Mặc định ghi vào `~/.gemini/config/skills` và `~/.gemini/config/rules`.*
 
 ---
 
@@ -110,9 +160,9 @@ Xem hướng dẫn đầy đủ tại [`INSTALL.md`](INSTALL.md).
 Nếu chỉ muốn áp dụng bộ skills/rules cho một repo dự án xác định:
 
 ```powershell
-.\scripts\sync.ps1 -Target project -ProjectPath "D:\Path\To\YourProject"
+.\scripts\sync.ps1 -Target project -ProjectPath "D:\Path\To\YourProject" -Hosts all
 ```
-*Tệp sẽ được đồng bộ vào thư mục `YourProject/.agents/skills/` và `YourProject/.agents/rules/`.*
+*Tệp sẽ được đồng bộ vào `YourProject/.agents/skills/` + `.agents/rules/`, và mirror sang `.claude/skills/` khi chọn host `claude`.*
 
 ---
 
@@ -120,13 +170,14 @@ Nếu chỉ muốn áp dụng bộ skills/rules cho một repo dự án xác đ�
 Tra cứu danh mục tại [`_external/CATALOG.md`](_external/CATALOG.md) và kích hoạt chính xác kỹ năng cần thiết:
 
 ```powershell
-# Kích hoạt 1 skill cụ thể (ví dụ: bibi tóm tắt video) vào Global hoặc Project
-.\scripts\sync.ps1 -Target global -Skill "bibi"
-.\scripts\sync.ps1 -Target project -ProjectPath "D:\Path\To\YourProject" -Skill "react-patterns"
+# Kích hoạt 1 skill cụ thể (ví dụ: react-patterns) - không cần biết nó ở skills/ hay _external/
+.\scripts\sync.ps1 -Target project -ProjectPath "D:\Path\To\YourProject" -Skill "react-patterns" -Hosts agents,claude
 
 # Hoặc kích hoạt toàn bộ 1 danh mục (ví dụ: 05-security-compliance)
 .\scripts\sync.ps1 -Target project -ProjectPath "D:\Path\To\YourProject" -Category "05-security-compliance"
 ```
+
+> 💡 Thêm `-DryRun` để xem trước sẽ ghi những gì mà không tạo file. Skill cũ **không bao giờ bị ghi đè** trừ khi bạn thêm `-Force`.
 
 ---
 

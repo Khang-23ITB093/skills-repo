@@ -11,9 +11,10 @@ Goal: keep the user's skills in ONE git-backed repo, install third-party skills 
 
 1. **SKILLS_HOME** = the user's skills repo (a git repo holding the skills they wrote, pushed to a remote so others can use it). Find it, or ask the user for the path once, and record it in `REGISTRY.md` (section 7).
 2. **GLOBAL_DIR** = Antigravity's global skills directory. Check in order, use the first that exists, otherwise ask: `~/.gemini/antigravity/skills/` (Windows: `%USERPROFILE%\.gemini\antigravity\skills\`), then `~/.gemini/config/skills/`.
-3. **Project scope** = `<project-root>/.agent/skills/`.
-4. Keep every directory Antigravity scans **flat**: `<dir>/<skill-name>/SKILL.md`, folder name equal to the `name` field. Nested folders may not be discovered.
-5. Never move or delete the user's own skills while organizing.
+3. **Project scope** = `<project-root>/.agents/skills/` (note the plural: Antigravity's default is `.agents/skills`; `.agent/skills` is legacy backwards-compat only). Codex and Cursor also read `.agents/skills/`.
+4. **Claude Code does not read `.agents/skills/`.** When a project must work on Claude Code, mirror each project skill to `<project-root>/.claude/skills/<skill-name>/` as well. Use `scripts/sync.ps1 -Target project -ProjectPath <path> -Hosts all` to write both. Prefer a byte-identical copy over a symlink.
+5. Keep every directory the hosts scan **flat**: `<dir>/<skill-name>/SKILL.md`, folder name equal to the `name` field. Nested folders may not be discovered.
+6. Never move or delete the user's own skills while organizing.
 
 ## 1. Repo layout and what may be committed
 
@@ -22,14 +23,14 @@ SKILLS_HOME is public/shared, so separate what the user owns from what they do n
 - **Own skills** (written by the user, plus `skill-manager`): committed to git.
 - **External skills** (installed from other repos): stored in `SKILLS_HOME/_external/<name>/`, listed in `.gitignore`, and **never committed**. Reasons: other people's license terms (the document skills `docx`, `pdf`, `pptx`, `xlsx` are source-available, not open source, so redistributing copies in a public repo may violate their license), and upstream updates would drift.
 - **`skills.lock.md`** (committed): the manifest of external skills, so anyone can reinstall them. Format in `references/git-repo-layout.md`.
-- Link external skills into GLOBAL_DIR or a project's `.agent/skills/` (symlink; on Windows without symlink rights, copy and note "copied" in the registry so updates are not missed).
+- Link external skills into GLOBAL_DIR or a project's `.agents/skills/` (copy; a symlink is fine only for a single-host setup, since Claude Code needs its own `.claude/skills/` copy and Windows symlinks are fragile). Record in the registry which paths were written.
 - If SKILLS_HOME is itself the directory Antigravity scans, install external skills flat directly in it instead of `_external/`, and add each name to `.gitignore`.
 
 ## 2. Scope: global or project
 
 Default: **global = small, general, low-risk, useful in almost every project. Project = specific, heavy, or changes how the agent behaves.**
 
-| GLOBAL | PROJECT (`.agent/skills/`) |
+| GLOBAL | PROJECT (`.agents/skills/`, mirrored to `.claude/skills/` for Claude Code) |
 |---|---|
 | `docx`, `pdf`, `pptx`, `xlsx`, `skill-creator`, `skill-manager`, personal style skills | `frontend-design` and UI skills, `superpowers` and other process/workflow skills, `addyosmani/agent-skills`, stack-, course- or assignment-specific skills |
 

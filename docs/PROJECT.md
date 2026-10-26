@@ -30,7 +30,8 @@ Skills/
 │   ├── mistake-memory/          # Sổ tay lỗi lặp (Ledger) tự học & checklist phòng ngừa
 │   ├── multi-model-orchestration/ # Bộ định tuyến tác vụ thông minh qua 7 mô hình AI
 │   ├── orimise-deep-planning/   # Quy trình uỷ quyền giải quyết bug khó qua Orimise API
-│   └── playwright/              # Kỹ năng tự động hóa kiểm thử E2E và browser
+│   ├── playwright/              # Kỹ năng tự động hóa kiểm thử E2E và browser
+│   └── project-charter/         # Khởi tạo dự án: phỏng vấn → AGENTS.md → chọn skill (đa agent)
 ├── rules/                       # Luật cứng bắt buộc (Always-on Behavioral Constraints)
 │   ├── codegraph-intelligence.md       # Cấm duplicate code, soi code cục bộ
 │   ├── destructive-operations-safety.md# Chặn xóa tệp/thư mục tùy tiện
@@ -39,6 +40,7 @@ Skills/
 │   ├── multi_model_escalation.md       # Cơ chế leo thang model thông minh
 │   ├── orimise-model-routing.md        # Giới hạn an toàn token & chi phí
 │   ├── plan-approval-first.md          # Luật lập plan và chờ duyệt trước khi code
+│   ├── project-charter.md              # Bắt buộc có Project Charter trước khi code
 │   └── project-initialization.md       # Tự động dựng khung .agents/ khi vào dự án mới
 ├── sync.ps1                     # Script đồng bộ 1 chạm (Global hoặc theo Project)
 └── README.md                    # Tài liệu hướng dẫn sử dụng nhanh
